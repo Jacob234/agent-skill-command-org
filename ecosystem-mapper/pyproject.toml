@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecosystem-mapper"
+version = "1.0.0"
+description = "Maps the Claude Code ecosystem (agents, skills, plugins, hooks) into an interactive graph"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+]
+
+[project.scripts]
+ecosystem-map = "ecosystem_mapper.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
