@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code Ecosystem Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Stats Banner */
+  #stats-banner {
+    background: #1a1d2e;
+    border-bottom: 1px solid #2d3148;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  #stats-banner h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f1f5f9;
+    white-space: nowrap;
+  }
+  .stat-chip {
+    background: #252840;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .stat-chip .count { font-weight: 700; color: #818cf8; }
+
+  /* Filter Bar */
+  #filter-bar {
+    background: #161825;
+    border-bottom: 1px solid #2d3148;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  #search-input {
+    background: #1e2033;
+    border: 1px solid #3d4166;
+    color: #e2e8f0;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    width: 200px;
+    outline: none;
+  }
+  #search-input:focus { border-color: #818cf8; }
+  #search-input::placeholder { color: #64748b; }
+  .filter-btn {
+    padding: 4px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .filter-btn.active { opacity: 1; }
+  .filter-btn.inactive { opacity: 0.35; }
+  .filter-btn[data-type="Agent"]       { background: #b45309; color: #fff; }
+  .filter-btn[data-type="Skill"]       { background: #2563eb; color: #fff; }
+  .filter-btn[data-type="PluginSkill"] { background: #059669; color: #fff; }
+  .filter-btn[data-type="Plugin"]      { background: #16a34a; color: #fff; }
+  .filter-btn[data-type="MCPServer"]   { background: #7c3aed; color: #fff; }
+  .filter-btn[data-type="Hook"]        { background: #dc2626; color: #fff; }
+  .filter-btn[data-type="GSDWorkflow"] { background: #ea580c; color: #fff; }
+  .filter-btn[data-type="GSDReference"]{ background: #c2410c; color: #fff; }
+  .filter-btn[data-type="BuiltInTool"] { background: #475569; color: #fff; }
+  #layout-select {
+    background: #1e2033;
+    border: 1px solid #3d4166;
+    color: #e2e8f0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-left: auto;
+  }
+
+  /* Main Area */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  #cy {
+    flex: 1;
+    background: #0f1117;
+  }
+
+  /* Sidebar */
+  #sidebar {
+    width: 340px;
+    background: #161825;
+    border-left: 1px solid #2d3148;
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 16px;
+    font-size: 13px;
+  }
+  #sidebar h2 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .node-type-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .detail-section { margin-bottom: 14px; }
+  .detail-section h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin-bottom: 4px;
+  }
+  .detail-section p, .detail-section code {
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+  .detail-section code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    background: #1e2033;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .edge-list { list-style: none; }
+  .edge-list li {
+    padding: 4px 0;
+    border-bottom: 1px solid #1e2033;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .edge-label {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: #252840;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .edge-target { color: #818cf8; cursor: pointer; }
+  .edge-target:hover { text-decoration: underline; }
+  #placeholder-text {
+    color: #475569;
+    text-align: center;
+    margin-top: 60px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- Stats Banner -->
+<div id="stats-banner">
+  <h1>Ecosystem Map</h1>
+  <span class="stat-chip"><span class="count">{{ stats.total_nodes }}</span> nodes</span>
+  <span class="stat-chip"><span class="count">{{ stats.total_edges }}</span> edges</span>
+  {% for type_name, count in stats.nodes_by_type.items() %}
+  <span class="stat-chip">{{ type_name }}: <span class="count">{{ count }}</span></span>
+  {% endfor %}
+</div>
+
+<!-- Filter Bar -->
+<div id="filter-bar">
+  <input id="search-input" type="text" placeholder="Search nodes...">
+  {% for type_name in node_types %}
+  <button class="filter-btn active" data-type="{{ type_name }}" onclick="toggleFilter(this)">{{ type_name }}</button>
+  {% endfor %}
+  <select id="layout-select" onchange="changeLayout(this.value)">
+    <option value="cose">Force-directed (default)</option>
+    <option value="circle">Circle</option>
+    <option value="concentric">Concentric</option>
+    <option value="grid">Grid</option>
+  </select>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="cy"></div>
+  <div id="sidebar">
+    <div id="placeholder-text">
+      Click a node to see details.<br>
+      Use filters to show/hide node types.<br>
+      Scroll to zoom, drag to pan.
+    </div>
+    <div id="detail-content" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Cytoscape.js core (includes built-in cose layout) -->
+<script>
+{{ cytoscape_js }}
+</script>
+
+<script>
+// Graph Data
+const graphData = {{ graph_json }};
+
+// Color Map
+const typeColors = {
+  Agent: '#b45309',
+  Skill: '#2563eb',
+  PluginSkill: '#059669',
+  Plugin: '#16a34a',
+  MCPServer: '#7c3aed',
+  Hook: '#dc2626',
+  GSDWorkflow: '#ea580c',
+  GSDReference: '#c2410c',
+  BuiltInTool: '#475569',
+};
+
+const edgeColors = {
+  SPAWNS: '#f59e0b',
+  INVOKES: '#60a5fa',
+  HAS_TOOLS: '#94a3b8',
+  PROVIDES: '#4ade80',
+  GUARDS: '#f87171',
+  REFERENCES: '#fb923c',
+  SUGGESTS_NEXT: '#6b7280',
+  DELEGATES_TO: '#a78bfa',
+  ALIASES: '#9ca3af',
+};
+
+// Build Cytoscape Elements
+const elements = [];
+
+// Compound parent groups from namespaces
+const namespaces = new Set();
+graphData.nodes.forEach(function(n) {
+  if (n.namespace && n.namespace !== '') {
+    namespaces.add(n.namespace);
+  }
+});
+
+namespaces.forEach(function(ns) {
+  elements.push({
+    group: 'nodes',
+    data: { id: 'ns:' + ns, label: ns, isCompound: true },
+    classes: 'compound',
+  });
+});
+
+graphData.nodes.forEach(function(n) {
+  var data = {
+    id: n.id,
+    label: n.name,
+    nodeType: n.type,
+    description: n.description || '',
+    source_file: n.source_file || '',
+    properties: n.properties || {},
+  };
+  if (n.namespace && namespaces.has(n.namespace)) {
+    data.parent = 'ns:' + n.namespace;
+  }
+  elements.push({
+    group: 'nodes',
+    data: data,
+    classes: n.type,
+  });
+});
+
+graphData.edges.forEach(function(e) {
+  elements.push({
+    group: 'edges',
+    data: {
+      id: e.source + '-' + e.type + '-' + e.target,
+      source: e.source,
+      target: e.target,
+      edgeType: e.type,
+    },
+    classes: e.type,
+  });
+});
+
+var cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: elements,
+  style: [
+    {
+      selector: '.compound',
+      style: {
+        'background-color': '#1a1d2e',
+        'border-color': '#3d4166',
+        'border-width': 1,
+        'label': 'data(label)',
+        'text-valign': 'top',
+        'text-halign': 'center',
+        'font-size': 14,
+        'color': '#64748b',
+        'padding': '20px',
+        'text-margin-y': -8,
+      },
+    },
+    {
+      selector: 'node:childless',
+      style: {
+        'background-color': function(ele) { return typeColors[ele.data('nodeType')] || '#475569'; },
+        'label': 'data(label)',
+        'color': '#e2e8f0',
+        'font-size': 10,
+        'text-valign': 'bottom',
+        'text-margin-y': 5,
+        'width': 24,
+        'height': 24,
+        'border-width': 0,
+        'text-max-width': 90,
+        'text-wrap': 'ellipsis',
+      },
+    },
+    {
+      selector: 'node:selected',
+      style: {
+        'border-width': 3,
+        'border-color': '#818cf8',
+        'width': 32,
+        'height': 32,
+      },
+    },
+    {
+      selector: 'edge',
+      style: {
+        'width': 1.5,
+        'line-color': function(ele) { return edgeColors[ele.data('edgeType')] || '#4b5563'; },
+        'target-arrow-color': function(ele) { return edgeColors[ele.data('edgeType')] || '#4b5563'; },
+        'target-arrow-shape': 'triangle',
+        'arrow-scale': 0.8,
+        'curve-style': 'bezier',
+        'opacity': 0.6,
+      },
+    },
+    {
+      selector: '.DELEGATES_TO',
+      style: { 'line-style': 'dashed' },
+    },
+    {
+      selector: '.PROVIDES',
+      style: { 'line-style': 'dotted' },
+    },
+    {
+      selector: '.SUGGESTS_NEXT',
+      style: { 'width': 0.8, 'opacity': 0.35 },
+    },
+    {
+      selector: '.dimmed',
+      style: { 'opacity': 0.1 },
+    },
+    {
+      selector: '.highlighted',
+      style: {
+        'border-width': 2,
+        'border-color': '#818cf8',
+        'opacity': 1,
+      },
+    },
+    {
+      selector: 'edge.highlighted',
+      style: { 'opacity': 1, 'width': 2.5 },
+    },
+  ],
+  layout: { name: 'cose', animate: false, idealEdgeLength: 100, nodeRepulsion: 8000, gravity: 0.25 },
+  wheelSensitivity: 0.3,
+});
+
+// Interaction: Click Node
+cy.on('tap', 'node:childless', function(evt) {
+  var node = evt.target;
+  showSidebar(node);
+  highlightNeighbors(node);
+});
+
+cy.on('tap', function(evt) {
+  if (evt.target === cy) {
+    clearHighlight();
+    hideSidebar();
+  }
+});
+
+function highlightNeighbors(node) {
+  cy.elements().removeClass('highlighted').addClass('dimmed');
+  var neighborhood = node.closedNeighborhood();
+  neighborhood.removeClass('dimmed').addClass('highlighted');
+  cy.nodes('.compound').removeClass('dimmed');
+}
+
+function clearHighlight() {
+  cy.elements().removeClass('highlighted').removeClass('dimmed');
+}
+
+// Build sidebar using safe DOM methods
+function showSidebar(node) {
+  var d = node.data();
+  var placeholder = document.getElementById('placeholder-text');
+  var content = document.getElementById('detail-content');
+  placeholder.style.display = 'none';
+  content.style.display = 'block';
+
+  // Clear previous content safely
+  while (content.firstChild) { content.removeChild(content.firstChild); }
+
+  var color = typeColors[d.nodeType] || '#475569';
+
+  // Header
+  var h2 = document.createElement('h2');
+  var badge = document.createElement('span');
+  badge.className = 'node-type-badge';
+  badge.style.background = color;
+  badge.textContent = d.nodeType;
+  h2.appendChild(badge);
+  h2.appendChild(document.createTextNode(' ' + d.label));
+  content.appendChild(h2);
+
+  // Description
+  if (d.description) {
+    var sec = createSection('Description');
+    var p = document.createElement('p');
+    p.textContent = d.description;
+    sec.appendChild(p);
+    content.appendChild(sec);
+  }
+
+  // Source file
+  if (d.source_file) {
+    var sec2 = createSection('Source File');
+    var code = document.createElement('code');
+    code.textContent = d.source_file;
+    sec2.appendChild(code);
+    content.appendChild(sec2);
+  }
+
+  // Properties
+  var props = d.properties || {};
+  var displayProps = Object.entries(props).filter(function(kv) { return !kv[0].startsWith('_'); });
+  if (displayProps.length > 0) {
+    var sec3 = createSection('Properties');
+    displayProps.forEach(function(kv) {
+      var val = Array.isArray(kv[1]) ? kv[1].join(', ') : String(kv[1]);
+      if (val) {
+        var p2 = document.createElement('p');
+        var b = document.createElement('strong');
+        b.textContent = kv[0] + ': ';
+        p2.appendChild(b);
+        p2.appendChild(document.createTextNode(val));
+        sec3.appendChild(p2);
+      }
+    });
+    content.appendChild(sec3);
+  }
+
+  // Connected edges
+  var connEdges = node.connectedEdges();
+  if (connEdges.length > 0) {
+    var sec4 = createSection('Connections');
+    var ul = document.createElement('ul');
+    ul.className = 'edge-list';
+    connEdges.forEach(function(edge) {
+      var eType = edge.data('edgeType');
+      var isSource = edge.source().id() === node.id();
+      var other = isSource ? edge.target() : edge.source();
+      var direction = isSource ? ' \u2192 ' : ' \u2190 ';
+
+      var li = document.createElement('li');
+      var label = document.createElement('span');
+      label.className = 'edge-label';
+      label.textContent = eType;
+      li.appendChild(label);
+      li.appendChild(document.createTextNode(direction));
+      var target = document.createElement('span');
+      target.className = 'edge-target';
+      target.textContent = other.data('label') || other.id();
+      target.addEventListener('click', (function(oid) {
+        return function() { selectNode(oid); };
+      })(other.id()));
+      li.appendChild(target);
+      ul.appendChild(li);
+    });
+    sec4.appendChild(ul);
+    content.appendChild(sec4);
+  }
+}
+
+function createSection(title) {
+  var sec = document.createElement('div');
+  sec.className = 'detail-section';
+  var h3 = document.createElement('h3');
+  h3.textContent = title;
+  sec.appendChild(h3);
+  return sec;
+}
+
+function hideSidebar() {
+  document.getElementById('placeholder-text').style.display = 'block';
+  var content = document.getElementById('detail-content');
+  content.style.display = 'none';
+  while (content.firstChild) { content.removeChild(content.firstChild); }
+}
+
+function selectNode(id) {
+  var node = cy.getElementById(id);
+  if (node.length) {
+    cy.animate({ center: { eles: node }, zoom: cy.zoom() }, { duration: 300 });
+    node.select();
+    showSidebar(node);
+    highlightNeighbors(node);
+  }
+}
+
+// Filter Controls
+var activeFilters = new Set({{ node_types_json }});
+
+function toggleFilter(btn) {
+  var type = btn.dataset.type;
+  if (activeFilters.has(type)) {
+    activeFilters.delete(type);
+    btn.classList.remove('active');
+    btn.classList.add('inactive');
+  } else {
+    activeFilters.add(type);
+    btn.classList.remove('inactive');
+    btn.classList.add('active');
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  var searchTerm = document.getElementById('search-input').value.toLowerCase();
+  cy.nodes(':childless').forEach(function(node) {
+    var matchesType = activeFilters.has(node.data('nodeType'));
+    var matchesSearch = !searchTerm ||
+      (node.data('label') || '').toLowerCase().indexOf(searchTerm) !== -1 ||
+      (node.data('description') || '').toLowerCase().indexOf(searchTerm) !== -1;
+    if (matchesType && matchesSearch) {
+      node.style('display', 'element');
+    } else {
+      node.style('display', 'none');
+    }
+  });
+  cy.edges().forEach(function(edge) {
+    var srcVisible = edge.source().style('display') !== 'none';
+    var tgtVisible = edge.target().style('display') !== 'none';
+    edge.style('display', (srcVisible && tgtVisible) ? 'element' : 'none');
+  });
+}
+
+document.getElementById('search-input').addEventListener('input', applyFilters);
+
+// Layout Change
+function changeLayout(name) {
+  var opts = { name: name, animate: true, animationDuration: 500 };
+  if (name === 'cose') {
+    opts.idealEdgeLength = 100;
+    opts.nodeRepulsion = 4000;
+  } else if (name === 'concentric') {
+    opts.concentric = function(node) { return node.degree(); };
+    opts.levelWidth = function() { return 3; };
+  }
+  cy.layout(opts).run();
+}
+</script>
+</body>
+</html>
