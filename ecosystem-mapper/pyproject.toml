@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ecosystem-mapper"
-version = "1.0.0"
+version = "2.0.0"
 description = "Maps the Claude Code ecosystem (agents, skills, plugins, hooks) into an interactive graph"
 requires-python = ">=3.10"
 dependencies = [
