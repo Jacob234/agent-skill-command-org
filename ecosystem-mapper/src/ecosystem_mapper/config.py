@@ -6,8 +6,9 @@ from pathlib import Path
 class Config:
     """Centralized path resolution for Claude Code ecosystem files."""
 
-    def __init__(self, claude_home: Path | None = None):
+    def __init__(self, claude_home: Path | None = None, project_dirs: list[Path] | None = None):
         self.claude_home = claude_home or Path.home() / ".claude"
+        self.project_dirs: list[Path] = project_dirs or []
 
     @property
     def agents_dir(self) -> Path:
@@ -40,6 +41,18 @@ class Config:
     @property
     def capabilities_file(self) -> Path:
         return self.claude_home / "CAPABILITIES.md"
+
+    @property
+    def plans_dir(self) -> Path:
+        return self.claude_home / "plans"
+
+    @property
+    def handoffs_dir(self) -> Path:
+        return self.claude_home / "handoffs"
+
+    @property
+    def wrapups_dir(self) -> Path:
+        return self.claude_home / "wrapups"
 
 
 # Built-in tools that are always available

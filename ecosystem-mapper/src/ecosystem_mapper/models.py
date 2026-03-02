@@ -17,6 +17,10 @@ class NodeType(str, Enum):
     GSD_WORKFLOW = "GSDWorkflow"
     GSD_REFERENCE = "GSDReference"
     BUILTIN_TOOL = "BuiltInTool"
+    HANDOFF = "Handoff"
+    WRAPUP = "Wrapup"
+    PLAN = "Plan"
+    CAPABILITY_ENTRY = "CapabilityEntry"
 
 
 class EdgeType(str, Enum):
@@ -29,6 +33,8 @@ class EdgeType(str, Enum):
     SUGGESTS_NEXT = "SUGGESTS_NEXT"
     DELEGATES_TO = "DELEGATES_TO"
     ALIASES = "ALIASES"
+    DOCUMENTS = "DOCUMENTS"
+    CONTINUES = "CONTINUES"
 
 
 @dataclass
