@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from ..models import GraphNode, GraphEdge, NodeType, EdgeType
+from ..parsers import BodyParser
 from .base import BaseExtractor
 
 
@@ -43,9 +44,23 @@ class PluginExtractor(BaseExtractor):
                     "version": entry.get("version", ""),
                     "marketplace": plugin_key.split("@")[-1] if "@" in plugin_key else "",
                     "full_key": plugin_key,
+                    "installedAt": entry.get("installedAt", ""),
+                    "lastUpdated": entry.get("lastUpdated", ""),
+                    "gitCommitSha": entry.get("gitCommitSha", ""),
+                    "projectPath": entry.get("projectPath", ""),
                 },
             )
             nodes.append(node)
+
+            # Read plugin.json for author and description
+            plugin_json = install_path / ".claude-plugin" / "plugin.json"
+            if plugin_json.exists():
+                try:
+                    pdata = json.loads(plugin_json.read_text(encoding="utf-8"))
+                    node.properties["author"] = pdata.get("author", "")
+                    node.properties["plugin_description"] = pdata.get("description", "")
+                except (json.JSONDecodeError, OSError):
+                    pass
 
             # Walk plugin cache for skills, commands, agents
             if install_path.exists():
@@ -96,6 +111,11 @@ class PluginExtractor(BaseExtractor):
             skill_name = fm.get("name", skill_dir.name)
             skill_id = f"plugin-skill:{plugin_name}:{skill_name}"
 
+            skill_props = {
+                "plugin_source": plugin_key,
+                "_body": body,
+            }
+            skill_props.update(BodyParser.parse(body))
             nodes.append(GraphNode(
                 id=skill_id,
                 node_type=NodeType.PLUGIN_SKILL,
@@ -103,10 +123,7 @@ class PluginExtractor(BaseExtractor):
                 description=fm.get("description", "")[:200],
                 source_file=str(skill_md),
                 namespace=plugin_name,
-                properties={
-                    "plugin_source": plugin_key,
-                    "_body": body,
-                },
+                properties=skill_props,
             ))
             edges.append(GraphEdge(
                 source_id=plugin_id,
@@ -142,6 +159,12 @@ class PluginExtractor(BaseExtractor):
             skill_id = f"plugin-skill:{plugin_name}:{cmd_name}"
 
             # Skip if already created from skills/ scan
+            cmd_props = {
+                "plugin_source": plugin_key,
+                "allowed_tools": fm.get("allowed-tools", []),
+                "_body": body,
+            }
+            cmd_props.update(BodyParser.parse(body))
             nodes.append(GraphNode(
                 id=skill_id,
                 node_type=NodeType.PLUGIN_SKILL,
@@ -149,11 +172,7 @@ class PluginExtractor(BaseExtractor):
                 description=fm.get("description", "")[:200],
                 source_file=str(md_path),
                 namespace=plugin_name,
-                properties={
-                    "plugin_source": plugin_key,
-                    "allowed_tools": fm.get("allowed-tools", []),
-                    "_body": body,
-                },
+                properties=cmd_props,
             ))
             edges.append(GraphEdge(
                 source_id=plugin_id,
@@ -187,17 +206,19 @@ class PluginExtractor(BaseExtractor):
             agent_name = fm.get("name", md_path.stem)
             agent_id = f"agent:{agent_name}"
 
+            agent_props = {
+                "plugin_source": plugin_key,
+                "model": fm.get("model", ""),
+                "_body": body,
+            }
+            agent_props.update(BodyParser.parse(body))
             nodes.append(GraphNode(
                 id=agent_id,
                 node_type=NodeType.AGENT,
                 name=agent_name,
                 description=fm.get("description", "")[:200],
                 source_file=str(md_path),
-                properties={
-                    "plugin_source": plugin_key,
-                    "model": fm.get("model", ""),
-                    "_body": body,
-                },
+                properties=agent_props,
             ))
             edges.append(GraphEdge(
                 source_id=plugin_id,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ..models import GraphNode, GraphEdge, NodeType, EdgeType
+from ..parsers import BodyParser
 from .base import BaseExtractor
 
 
@@ -72,5 +73,6 @@ class AgentExtractor(BaseExtractor):
 
             # Store body text for cross-reference analysis later
             node.properties["_body"] = body
+            node.properties.update(BodyParser.parse(body))
 
         return nodes, edges

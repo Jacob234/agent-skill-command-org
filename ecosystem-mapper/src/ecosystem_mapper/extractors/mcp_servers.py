@@ -55,6 +55,7 @@ class MCPServerExtractor(BaseExtractor):
                         "protocol": protocol,
                         "url": url,
                         "plugin_source": plugin_key,
+                        "server_type": server_config.get("type", protocol),
                     },
                 ))
                 edges.append(GraphEdge(

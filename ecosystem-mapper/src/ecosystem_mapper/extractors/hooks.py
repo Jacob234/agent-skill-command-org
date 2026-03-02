@@ -55,6 +55,14 @@ class HookExtractor(BaseExtractor):
                     hook_name = f"{plugin_name}-{event_type}-{i}"
                     hook_id = f"hook:{plugin_name}:{hook_name}"
 
+                    # Extract command path from hooks array
+                    hooks_array = hook_entry.get("hooks", [])
+                    command_paths = []
+                    for h in hooks_array if isinstance(hooks_array, list) else []:
+                        cmd = h.get("command", "") if isinstance(h, dict) else ""
+                        if cmd:
+                            command_paths.append(cmd)
+
                     nodes.append(GraphNode(
                         id=hook_id,
                         node_type=NodeType.HOOK,
@@ -65,6 +73,8 @@ class HookExtractor(BaseExtractor):
                             "event": event_type,
                             "matcher": matcher,
                             "plugin_source": plugin_key,
+                            "timeout": hook_entry.get("timeout", ""),
+                            "command_paths": command_paths,
                         },
                     ))
 

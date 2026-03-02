@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..models import GraphNode, GraphEdge, NodeType, EdgeType
+from ..parsers import BodyParser
 from .base import BaseExtractor
 
 
@@ -63,6 +64,7 @@ class CommandExtractor(BaseExtractor):
 
             # Store body for cross-reference analysis
             node.properties["_body"] = body
+            node.properties.update(BodyParser.parse(body))
 
         return nodes, edges
 

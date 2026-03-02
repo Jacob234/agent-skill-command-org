@@ -41,6 +41,7 @@ class SettingsExtractor(BaseExtractor):
                     "enabled_plugins": {
                         k: v for k, v in enabled_plugins.items()
                     },
+                    "statusLine": settings.get("statusLine", {}),
                 },
             ))
 
