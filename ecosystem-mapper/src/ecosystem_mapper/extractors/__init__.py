@@ -9,6 +9,10 @@ from .mcp_servers import MCPServerExtractor
 from .hooks import HookExtractor
 from .gsd import GSDFrameworkExtractor
 from .settings import SettingsExtractor
+from .handoffs import HandoffExtractor
+from .wrapups import WrapupExtractor
+from .plans import PlanExtractor
+from .capabilities import CapabilitiesExtractor
 
 
 def extract_all(config: Config) -> EcosystemGraph:
@@ -31,6 +35,10 @@ def extract_all(config: Config) -> EcosystemGraph:
         HookExtractor(config),
         GSDFrameworkExtractor(config),
         SettingsExtractor(config),
+        HandoffExtractor(config),
+        WrapupExtractor(config),
+        PlanExtractor(config),
+        CapabilitiesExtractor(config),
     ]
 
     for extractor in extractors:
