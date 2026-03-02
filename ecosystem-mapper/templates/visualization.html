@@ -85,6 +85,10 @@
   .filter-btn[data-type="GSDWorkflow"] { background: #ea580c; color: #fff; }
   .filter-btn[data-type="GSDReference"]{ background: #c2410c; color: #fff; }
   .filter-btn[data-type="BuiltInTool"] { background: #475569; color: #fff; }
+  .filter-btn[data-type="Handoff"]     { background: #0891b2; color: #fff; }
+  .filter-btn[data-type="Wrapup"]      { background: #0d9488; color: #fff; }
+  .filter-btn[data-type="Plan"]        { background: #4f46e5; color: #fff; }
+  .filter-btn[data-type="CapabilityEntry"] { background: #64748b; color: #fff; }
   #layout-select {
     background: #1e2033;
     border: 1px solid #3d4166;
@@ -235,6 +239,10 @@ const typeColors = {
   GSDWorkflow: '#ea580c',
   GSDReference: '#c2410c',
   BuiltInTool: '#475569',
+  Handoff: '#0891b2',
+  Wrapup: '#0d9488',
+  Plan: '#4f46e5',
+  CapabilityEntry: '#64748b',
 };
 
 const edgeColors = {
@@ -247,6 +255,8 @@ const edgeColors = {
   SUGGESTS_NEXT: '#6b7280',
   DELEGATES_TO: '#a78bfa',
   ALIASES: '#9ca3af',
+  DOCUMENTS: '#22d3ee',
+  CONTINUES: '#2dd4bf',
 };
 
 // Build Cytoscape Elements
@@ -367,6 +377,14 @@ var cy = cytoscape({
     {
       selector: '.SUGGESTS_NEXT',
       style: { 'width': 0.8, 'opacity': 0.35 },
+    },
+    {
+      selector: '.DOCUMENTS',
+      style: { 'line-style': 'dashed', 'opacity': 0.5 },
+    },
+    {
+      selector: '.CONTINUES',
+      style: { 'width': 3 },
     },
     {
       selector: '.dimmed',
