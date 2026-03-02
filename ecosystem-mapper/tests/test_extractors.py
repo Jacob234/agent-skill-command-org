@@ -1,10 +1,12 @@
 """Tests for ecosystem extractors against real data formats."""
 
 import pytest
+import tempfile
 from pathlib import Path
 
 from ecosystem_mapper.extractors.base import BaseExtractor, _parse_frontmatter_fallback
 from ecosystem_mapper.models import EcosystemGraph, GraphNode, GraphEdge, NodeType, EdgeType
+from ecosystem_mapper.config import Config
 
 
 class TestFrontmatterParsing:
@@ -167,3 +169,117 @@ Body."""
         else:
             category = "utility"
         assert category == "design"
+
+
+class TestCapabilitiesExtraction:
+    """Test CapabilitiesExtractor table row parsing."""
+
+    def test_table_row_parsing(self):
+        """Verify table rows are parsed into CapabilityEntry nodes."""
+        from ecosystem_mapper.extractors.capabilities import CapabilitiesExtractor
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_home = Path(tmpdir)
+            cap_file = claude_home / "CAPABILITIES.md"
+            cap_file.write_text("""# Skills
+
+## Core Commands
+
+| Command | Description | When to Use |
+|---------|-------------|-------------|
+| /commit | Create a git commit | After completing changes |
+| /review-pr | Review a pull request | When PR needs review |
+
+## GSD Commands
+
+| Command | Description | When to Use |
+|---------|-------------|-------------|
+| /gsd:plan | Plan a project phase | At project start |
+""")
+            config = Config(claude_home=claude_home)
+            extractor = CapabilitiesExtractor(config)
+            nodes, edges = extractor.extract()
+
+            assert len(nodes) == 3
+            names = {n.name for n in nodes}
+            assert "commit" in names
+            assert "review-pr" in names
+            assert "gsd:plan" in names
+
+            # Verify properties
+            commit_node = next(n for n in nodes if n.name == "commit")
+            assert commit_node.properties["when_to_use"] == "After completing changes"
+            assert commit_node.properties["section"] == "Core Commands"
+
+    def test_skips_header_rows(self):
+        """Header rows like | Command | Description | should be skipped."""
+        from ecosystem_mapper.extractors.capabilities import CapabilitiesExtractor
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_home = Path(tmpdir)
+            cap_file = claude_home / "CAPABILITIES.md"
+            cap_file.write_text("""| Command | Description | When to Use |
+|---------|-------------|-------------|
+| /test | Test skill | When testing |
+""")
+            config = Config(claude_home=claude_home)
+            extractor = CapabilitiesExtractor(config)
+            nodes, _ = extractor.extract()
+            # Should only have "test", not "Command"
+            assert len(nodes) == 1
+            assert nodes[0].name == "test"
+
+
+class TestGSDContentParsing:
+    """Test that GSD nodes now have _body and semantic.* properties."""
+
+    def test_gsd_workflow_has_body_and_semantics(self):
+        from ecosystem_mapper.extractors.gsd import GSDFrameworkExtractor
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_home = Path(tmpdir)
+            gsd_dir = claude_home / "get-shit-done"
+            wf_dir = gsd_dir / "workflows"
+            wf_dir.mkdir(parents=True)
+
+            (wf_dir / "execute-phase.md").write_text("""---
+description: Execute a planned phase
+---
+
+## Execution Steps
+
+<execution_flow>
+Run the plan step by step.
+</execution_flow>
+
+Load @~/.claude/get-shit-done/references/principles.md for guidance.
+""")
+            config = Config(claude_home=claude_home)
+            extractor = GSDFrameworkExtractor(config)
+            nodes, _ = extractor.extract()
+
+            assert len(nodes) == 1
+            node = nodes[0]
+            assert node.properties["_body"]
+            assert "semantic.xml_sections" in node.properties
+            assert "execution_flow" in node.properties["semantic.xml_sections"]
+            assert "semantic.at_file_refs" in node.properties
+            assert "semantic.heading_structure" in node.properties
+
+    def test_gsd_deprecation_detection(self):
+        from ecosystem_mapper.extractors.gsd import GSDFrameworkExtractor
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            claude_home = Path(tmpdir)
+            gsd_dir = claude_home / "get-shit-done" / "references"
+            gsd_dir.mkdir(parents=True)
+
+            (gsd_dir / "old-guide.md").write_text(
+                "⚠️ DEPRECATED: Use new-guide.md instead.\n\nOld content."
+            )
+            config = Config(claude_home=claude_home)
+            extractor = GSDFrameworkExtractor(config)
+            nodes, _ = extractor.extract()
+
+            assert len(nodes) == 1
+            assert nodes[0].properties.get("deprecated") is True

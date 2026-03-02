@@ -8,6 +8,8 @@ from ecosystem_mapper.analyzers.cross_references import (
     _detect_file_references,
     _detect_offer_next,
     _detect_agent_delegation,
+    _detect_capability_enrichment,
+    _detect_handoff_references,
 )
 
 
@@ -152,3 +154,95 @@ class TestAgentDelegation:
         ))
         _detect_agent_delegation(g)
         assert len(g.get_edges_by_type(EdgeType.DELEGATES_TO)) == 0
+
+    def test_context_snippet_on_delegation(self):
+        """Verify context snippets are attached to delegation edges."""
+        g = EcosystemGraph()
+        g.add_node(GraphNode(
+            id="agent:orchestrator", node_type=NodeType.AGENT, name="orchestrator",
+            properties={"_body": "This agent should spawn the worker agent for heavy tasks."},
+        ))
+        g.add_node(GraphNode(
+            id="agent:worker", node_type=NodeType.AGENT, name="worker",
+        ))
+        _detect_agent_delegation(g)
+        edges = g.get_edges_by_type(EdgeType.DELEGATES_TO)
+        assert len(edges) == 1
+        assert "context" in edges[0].properties
+        assert "worker" in edges[0].properties["context"]
+
+
+class TestCapabilityEnrichment:
+    """Test capability enrichment from CAPABILITY_ENTRY nodes."""
+
+    def test_capability_matches_skill(self):
+        g = EcosystemGraph()
+        g.add_node(GraphNode(
+            id="skill:commit", node_type=NodeType.SKILL, name="commit",
+        ))
+        g.add_node(GraphNode(
+            id="capability:commit", node_type=NodeType.CAPABILITY_ENTRY, name="commit",
+            properties={
+                "command_ref": "commit",
+                "when_to_use": "After completing changes",
+                "cap_description": "Create a git commit",
+            },
+        ))
+        _detect_capability_enrichment(g)
+
+        # Skill should be enriched
+        skill = g.get_node("skill:commit")
+        assert skill.properties.get("when_to_use") == "After completing changes"
+        assert skill.properties.get("cap_description") == "Create a git commit"
+
+        # DOCUMENTS edge should be created
+        docs = g.get_edges_by_type(EdgeType.DOCUMENTS)
+        assert len(docs) == 1
+        assert docs[0].source_id == "capability:commit"
+        assert docs[0].target_id == "skill:commit"
+
+    def test_no_match_no_enrichment(self):
+        g = EcosystemGraph()
+        g.add_node(GraphNode(
+            id="capability:nonexistent", node_type=NodeType.CAPABILITY_ENTRY,
+            name="nonexistent",
+            properties={"command_ref": "nonexistent", "when_to_use": "Never"},
+        ))
+        _detect_capability_enrichment(g)
+        assert len(g.get_edges_by_type(EdgeType.DOCUMENTS)) == 0
+
+
+class TestHandoffReferences:
+    """Test handoff body mentions of components."""
+
+    def test_handoff_body_mentioning_agent(self):
+        g = EcosystemGraph()
+        g.add_node(GraphNode(
+            id="handoff:session-123", node_type=NodeType.HANDOFF,
+            name="session-123",
+            properties={
+                "_body": "Worked on the meta-architect agent to add delegation logic.",
+            },
+        ))
+        g.add_node(GraphNode(
+            id="agent:meta-architect", node_type=NodeType.AGENT,
+            name="meta-architect",
+        ))
+        _detect_handoff_references(g)
+        docs = g.get_edges_by_type(EdgeType.DOCUMENTS)
+        assert len(docs) == 1
+        assert docs[0].properties["match_type"] == "name_mention"
+        assert "context" in docs[0].properties
+
+    def test_no_match_for_short_names(self):
+        """Names shorter than 3 chars should not be indexed."""
+        g = EcosystemGraph()
+        g.add_node(GraphNode(
+            id="handoff:test", node_type=NodeType.HANDOFF, name="test",
+            properties={"_body": "The ab agent is mentioned."},
+        ))
+        g.add_node(GraphNode(
+            id="agent:ab", node_type=NodeType.AGENT, name="ab",
+        ))
+        _detect_handoff_references(g)
+        assert len(g.get_edges_by_type(EdgeType.DOCUMENTS)) == 0
