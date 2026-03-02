@@ -6,20 +6,21 @@ import json
 from pathlib import Path
 
 from ..models import EcosystemGraph
+from .constants import EXPORT_BLOCKLIST
 
 
 def export_json(graph: EcosystemGraph, output_path: Path) -> Path:
     """Serialize the ecosystem graph to a JSON file.
 
-    Strips internal properties (prefixed with _) before export.
+    Strips blocklisted properties (e.g. _body) before export.
     """
     data = graph.to_dict()
 
-    # Clean internal properties from nodes
+    # Clean blocklisted properties from nodes
     for node in data["nodes"]:
         node["properties"] = {
             k: v for k, v in node["properties"].items()
-            if not k.startswith("_")
+            if k not in EXPORT_BLOCKLIST
         }
 
     output_file = output_path / "ecosystem-graph.json"

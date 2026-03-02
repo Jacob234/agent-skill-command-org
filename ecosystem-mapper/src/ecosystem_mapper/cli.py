@@ -37,13 +37,20 @@ def main(argv: list[str] | None = None) -> int:
         help="Output format (default: all)",
     )
     parser.add_argument(
+        "--project-dirs",
+        type=Path,
+        nargs="*",
+        default=[],
+        help="Project directories to scan for handoffs/wrapups (e.g. ~/JBK-Research/project1)",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Verbose output",
     )
     args = parser.parse_args(argv)
 
-    config = Config(claude_home=args.claude_home)
+    config = Config(claude_home=args.claude_home, project_dirs=args.project_dirs)
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
