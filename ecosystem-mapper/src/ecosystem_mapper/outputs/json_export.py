@@ -18,14 +18,11 @@ def export_json(graph: EcosystemGraph, output_path: Path) -> Path:
 
     # Clean blocklisted properties from nodes
     for node in data["nodes"]:
-        node["properties"] = {
-            k: v for k, v in node["properties"].items()
-            if k not in EXPORT_BLOCKLIST
-        }
+        node["properties"] = {k: v for k, v in node["properties"].items() if k not in EXPORT_BLOCKLIST}
 
     output_file = output_path / "ecosystem-graph.json"
     output_file.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False),
+        json.dumps(data, indent=2, ensure_ascii=False, default=str),
         encoding="utf-8",
     )
     return output_file

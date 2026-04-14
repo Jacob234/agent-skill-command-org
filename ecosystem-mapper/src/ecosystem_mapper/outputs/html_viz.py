@@ -11,7 +11,6 @@ from jinja2 import Environment, FileSystemLoader
 from ..models import EcosystemGraph, NodeType
 from .constants import EXPORT_BLOCKLIST
 
-
 # Location of templates relative to this file
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
 
@@ -34,7 +33,7 @@ def export_html(graph: EcosystemGraph, output_path: Path) -> Path:
     cytoscape_js = _load_js(TEMPLATES_DIR / "cytoscape.min.js")
 
     # Serialize graph JSON and escape for safe <script> embedding
-    graph_json = json.dumps(graph_dict, ensure_ascii=False)
+    graph_json = json.dumps(graph_dict, ensure_ascii=False, default=str)
     graph_json = _escape_for_script_tag(graph_json)
 
     # Render template
