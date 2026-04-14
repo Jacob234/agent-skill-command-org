@@ -6,9 +6,19 @@ from pathlib import Path
 class Config:
     """Centralized path resolution for Claude Code ecosystem files."""
 
-    def __init__(self, claude_home: Path | None = None, project_dirs: list[Path] | None = None):
+    def __init__(
+        self,
+        claude_home: Path | None = None,
+        project_dirs: list[Path] | None = None,
+        registry_path: Path | None = None,
+    ):
         self.claude_home = claude_home or Path.home() / ".claude"
         self.project_dirs: list[Path] = project_dirs or []
+        self.registry_path: Path | None = registry_path
+
+    @property
+    def user_skills_dir(self) -> Path:
+        return self.claude_home / "skills"
 
     @property
     def agents_dir(self) -> Path:
@@ -57,7 +67,19 @@ class Config:
 
 # Built-in tools that are always available
 BUILTIN_TOOLS = [
-    "Read", "Write", "Edit", "MultiEdit", "Bash", "Grep", "Glob",
-    "Task", "WebFetch", "WebSearch", "NotebookEdit", "TodoWrite",
-    "AskUserQuestion", "EnterPlanMode", "ExitPlanMode",
+    "Read",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Bash",
+    "Grep",
+    "Glob",
+    "Task",
+    "WebFetch",
+    "WebSearch",
+    "NotebookEdit",
+    "TodoWrite",
+    "AskUserQuestion",
+    "EnterPlanMode",
+    "ExitPlanMode",
 ]

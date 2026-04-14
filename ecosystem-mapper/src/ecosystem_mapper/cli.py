@@ -6,11 +6,11 @@ import argparse
 import sys
 from pathlib import Path
 
+from .analyzers import analyze_cross_references
 from .config import Config
 from .extractors import extract_all
-from .analyzers import analyze_cross_references
-from .models import NodeType, EdgeType
-from .outputs import export_json, export_html
+from .models import EdgeType, NodeType
+from .outputs import export_dot, export_html, export_json
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,7 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--format",
-        choices=["json", "html", "all"],
+        choices=["json", "html", "dot", "all"],
         default="all",
         help="Output format (default: all)",
     )
@@ -41,16 +41,29 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         nargs="*",
         default=[],
-        help="Project directories to scan for handoffs/wrapups (e.g. ~/JBK-Research/project1)",
+        help=("Project directories to scan for handoffs/wrapups AND .claude/skills/ (e.g. ~/JBK-Research/project1)"),
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "--registry-path",
+        type=Path,
+        default=None,
+        help=(
+            "Path to hand-curated REGISTRY.yaml for skill portability metadata (joins to SKILL.md files by scope+name)"
+        ),
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
         action="store_true",
         help="Verbose output",
     )
     args = parser.parse_args(argv)
 
-    config = Config(claude_home=args.claude_home, project_dirs=args.project_dirs)
+    config = Config(
+        claude_home=args.claude_home,
+        project_dirs=args.project_dirs,
+        registry_path=args.registry_path,
+    )
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,6 +76,21 @@ def main(argv: list[str] | None = None) -> int:
             count = len(graph.get_nodes_by_type(nt))
             if count:
                 print(f"  {nt.value}: {count} nodes")
+
+    # Surface skills missing from the registry so drift is visible
+    if config.registry_path is not None:
+        ip_prefixes = ("skill:user:", "skill:workspace:", "skill:project:")
+        unmatched = [
+            n
+            for n in graph.get_nodes_by_type(NodeType.SKILL)
+            if n.id.startswith(ip_prefixes) and n.properties.get("portability_tier") == "unclassified"
+        ]
+        if unmatched:
+            print(f"  Warning: {len(unmatched)} skill(s) missing REGISTRY.yaml entry:")
+            for node in unmatched[:10]:
+                print(f"    - {node.id}")
+            if len(unmatched) > 10:
+                print(f"    ... and {len(unmatched) - 10} more")
 
     # Phase 3: Analyze cross-references
     print("Analyzing cross-references...")
@@ -77,9 +105,13 @@ def main(argv: list[str] | None = None) -> int:
         html_path = export_html(graph, output_dir)
         print(f"  HTML: {html_path}")
 
+    if args.format in ("dot", "all"):
+        dot_path = export_dot(graph, output_dir)
+        print(f"  DOT:  {dot_path}")
+
     # Summary
     stats = graph.to_dict()["stats"]
-    print(f"\nEcosystem Summary:")
+    print("\nEcosystem Summary:")
     print(f"  Total nodes: {stats['total_nodes']}")
     print(f"  Total edges: {stats['total_edges']}")
     print()

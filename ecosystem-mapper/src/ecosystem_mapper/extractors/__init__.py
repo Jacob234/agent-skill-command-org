@@ -1,18 +1,19 @@
 """Extractor orchestration — runs all extractors and merges results."""
 
-from ..config import Config, BUILTIN_TOOLS
+from ..config import BUILTIN_TOOLS, Config
 from ..models import EcosystemGraph, GraphNode, NodeType
 from .agents import AgentExtractor
-from .commands import CommandExtractor
-from .plugins import PluginExtractor
-from .mcp_servers import MCPServerExtractor
-from .hooks import HookExtractor
-from .gsd import GSDFrameworkExtractor
-from .settings import SettingsExtractor
-from .handoffs import HandoffExtractor
-from .wrapups import WrapupExtractor
-from .plans import PlanExtractor
 from .capabilities import CapabilitiesExtractor
+from .commands import CommandExtractor
+from .gsd import GSDFrameworkExtractor
+from .handoffs import HandoffExtractor
+from .hooks import HookExtractor
+from .mcp_servers import MCPServerExtractor
+from .plans import PlanExtractor
+from .plugins import PluginExtractor
+from .settings import SettingsExtractor
+from .skills import SkillExtractor
+from .wrapups import WrapupExtractor
 
 
 def extract_all(config: Config) -> EcosystemGraph:
@@ -21,15 +22,18 @@ def extract_all(config: Config) -> EcosystemGraph:
 
     # Seed built-in tool nodes
     for tool_name in BUILTIN_TOOLS:
-        graph.add_node(GraphNode(
-            id=f"tool:{tool_name}",
-            node_type=NodeType.BUILTIN_TOOL,
-            name=tool_name,
-        ))
+        graph.add_node(
+            GraphNode(
+                id=f"tool:{tool_name}",
+                node_type=NodeType.BUILTIN_TOOL,
+                name=tool_name,
+            )
+        )
 
     extractors = [
         AgentExtractor(config),
         CommandExtractor(config),
+        SkillExtractor(config),
         PluginExtractor(config),
         MCPServerExtractor(config),
         HookExtractor(config),
@@ -75,21 +79,18 @@ def _create_missing_tool_nodes(graph: EcosystemGraph) -> None:
 
     for tool_id in sorted(missing_tools):
         tool_name = tool_id.removeprefix("tool:")
-        graph.add_node(GraphNode(
-            id=tool_id,
-            node_type=NodeType.BUILTIN_TOOL,
-            name=tool_name,
-            properties={"auto_created": True},
-        ))
+        graph.add_node(
+            GraphNode(
+                id=tool_id,
+                node_type=NodeType.BUILTIN_TOOL,
+                name=tool_name,
+                properties={"auto_created": True},
+            )
+        )
 
 
 def _prune_dangling_edges(graph: EcosystemGraph) -> None:
     """Remove edges where source or target node doesn't exist."""
-    valid = [
-        e for e in graph.edges
-        if graph.has_node(e.source_id) and graph.has_node(e.target_id)
-    ]
+    valid = [e for e in graph.edges if graph.has_node(e.source_id) and graph.has_node(e.target_id)]
     graph._edges = valid
-    graph._edge_keys = {
-        (e.source_id, e.target_id, e.edge_type.value) for e in valid
-    }
+    graph._edge_keys = {(e.source_id, e.target_id, e.edge_type.value) for e in valid}
